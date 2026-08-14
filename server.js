@@ -146,6 +146,42 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`MaidFinder Server running on port ${PORT}`));  const { bookingId, transactionRef, amount } = req.body;
+  
+  if (!bookingId || !transactionRef || !req.file) {
+    return res.status(400).json({ error: "Missing required details or receipt." });
+  }
+
+  const paymentRecord = {
+    id: "PAY-" + Date.now(),
+    bookingId,
+    userId: req.telegramUser.id,
+    telebirrNumber: "+251938967996",
+    transactionRef,
+    amount: amount || "500 ETB",
+    receiptPath: `/uploads/${req.file.filename}`,
+    status: "VERIFICATION_PENDING",
+    submittedAt: new Date().toISOString()
+  };
+
+  PAYMENTS_DB.push(paymentRecord);
+
+  const booking = BOOKINGS_DB.find(b => b.id === bookingId);
+  if (booking) booking.status = "VERIFICATION_PENDING";
+
+  res.json({
+    success: true,
+    message: "Payment receipt uploaded successfully.",
+    payment: paymentRecord
+  });
+});
+
+// Serve index.html directly from root for all web app views
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`MaidFinder Server running on port ${PORT}`));  res.json({ success: true, booking });
 });
 
