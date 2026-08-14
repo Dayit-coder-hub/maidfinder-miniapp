@@ -1,0 +1,76 @@
+              </div>
+              <p style="font-size: 13px; margin: 6px 0;">
+                <strong>Exp:</strong> ${maid.experience} | <strong>Age:</strong> ${maid.age}<br>
+                <strong>Skills:</strong> ${maid.skills.join(', ')}<br>
+                <strong>Expected Salary:</strong> ${maid.salary}
+              </p>
+              <button onclick="bookMaid('${maid.id}')">Hire / Request Contact</button>
+            </div>
+          `;
+        });
+      } catch (err) {
+        document.getElementById('maids-list').innerHTML = `<p style="color:red;">Error loading profiles. Ensure you opened inside Telegram.</p>`;
+      }
+    }
+
+    async function bookMaid(maidId) {
+      tg.HapticFeedback.impactOccurred('medium');
+      try {
+        const res = await fetch('/api/bookings', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ maidId, requirement: 'Full-time live-in' })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          document.getElementById('active-booking-id').value = data.booking.id;
+          document.getElementById('payment-section').classList.remove('hidden');
+          window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+          tg.showAlert('Booking initiated! Please send payment via Telebirr and upload screenshot below.');
+        }
+      } catch (err) {
+        tg.showAlert('Failed to process request.');
+      }
+    }
+
+    async function submitPayment(e) {
+      e.preventDefault();
+      tg.HapticFeedback.impactOccurred('heavy');
+      
+      const btn = document.getElementById('pay-btn');
+      btn.innerText = 'Uploading...';
+      btn.disabled = true;
+
+      const formData = new FormData();
+      formData.append('bookingId', document.getElementById('active-booking-id').value);
+      formData.append('transactionRef', document.getElementById('tx-ref').value);
+      formData.append('receiptImage', document.getElementById('receipt-file').files[0]);
+
+      try {
+        const res = await fetch('/api/payments/telebirr', {
+          method: 'POST',
+          headers: { 'x-telegram-init-data': tg.initData || '' },
+          body: formData
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          tg.showAlert('Receipt Received! We will confirm your Telebirr payment shortly and unlock contact info.');
+          document.getElementById('payment-section').innerHTML = `<div style="text-align:center; color:#16a34a; font-weight:bold;">Payment Received. Verification Pending.</div>`;
+        } else {
+          alert(data.error || 'Upload failed');
+          btn.disabled = false;
+          btn.innerText = 'Submit Payment Receipt';
+        }
+      } catch (err) {
+        alert('Upload Error');
+        btn.disabled = false;
+        btn.innerText = 'Submit Payment Receipt';
+      }
+    }
+
+    loadMaids();
+  </script>
+</body>
+</html>
